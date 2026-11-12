@@ -345,8 +345,8 @@
 
   // Set a calendar deadline (YYYY-MM-DD) for each bank when confirmed.
   const bankValidity = {
-    'fortios-7.6-admin': null,
-    'fortisiem-practice-76': null,
+    'fortios-7.6-admin': '2026-09-25',
+    'fortisiem-practice-76': '2026-11-21',
   };
   const validityDateFormat = new Intl.DateTimeFormat('uk-UA', {
     dateStyle: 'long',
