@@ -343,11 +343,49 @@
     });
   }
 
+  // Set a calendar deadline (YYYY-MM-DD) for each bank when confirmed.
+  const bankValidity = {
+    'fortios-7.6-admin': null,
+    'fortisiem-practice-76': null,
+  };
+  const validityDateFormat = new Intl.DateTimeFormat('uk-UA', {
+    dateStyle: 'long',
+    timeZone: 'UTC',
+  });
+  const kyivCalendar = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/Kyiv',
+  });
+  const daysFormat = new Intl.NumberFormat('uk-UA', { style: 'unit', unit: 'day', unitDisplay: 'long' });
+
+  function renderBankValidity(item, today) {
+    const deadline = bankValidity[item.id];
+    const expires = Date.parse(deadline);
+    const days = (expires - today) / 86400000;
+    const configured = Number.isFinite(days);
+    const expired = configured && days < 0;
+    const status = configured ? (expired ? 'Термін минув' : 'Актуальний') : 'Дату не вказано';
+    const badge = configured ? (expired ? '#b42318;background:#fdeceb' : '#087758;background:#e3f6ef') : '#475569;background:#eef2f6';
+    const remaining = days === 0 ? 'До кінця дня' : `Залишилося ${daysFormat.format(days)}`;
+
+    return `<div style="border-top:1px solid #e2e8f0;margin-top:16px;padding-top:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px 12px;flex-wrap:wrap">
+        <strong>${escapeHtml(item.title)}</strong>
+        <span style="border-radius:999px;padding:4px 10px;font-size:.8rem;font-weight:700;color:${badge}">${status}</span>
+      </div>
+      ${configured ? `<div style="display:flex;justify-content:space-between;gap:4px 12px;flex-wrap:wrap;margin-top:6px">
+        <span>Актуальний до <time datetime="${deadline}">${validityDateFormat.format(expires)}</time></span>
+        ${expired ? '' : `<strong>${remaining}</strong>`}
+      </div>` : ''}
+    </div>`;
+  }
+
   function renderHome() {
     const current = bank();
     const local = bs();
     const stats = summaryStats();
     const answered = Object.values(local.statistics.attempts || {}).filter(item => item.attempts > 0).length;
+    const dateParts = Object.fromEntries(kyivCalendar.formatToParts(new Date()).map(({ type, value }) => [type, value]));
+    const today = Date.UTC(Number(dateParts.year), Number(dateParts.month) - 1, Number(dateParts.day));
     const totalAcrossBanks = banks.reduce((sum, item) => sum + item.questionCount, 0);
 
     $app.innerHTML = shell(`<main class="page">
@@ -369,6 +407,7 @@
             ${banks.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === current.id ? 'selected' : ''}>${escapeHtml(item.vendor)} → ${escapeHtml(item.product)} → ${escapeHtml(item.title)} (${item.questionCount})</option>`).join('')}
           </select>
           <div class="selector-meta"><b>${banks.length} банки · ${totalAcrossBanks} питань разом.</b><br>FortiOS: старий екзамен. FortiSIEM: новий екзамен. Обирай банк тут — Study, Exam і статистика працюють окремо для кожного.</div>
+          ${banks.map(item => renderBankValidity(item, today)).join('')}
         </div>
       </section>
 
