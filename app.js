@@ -359,7 +359,7 @@
     const expires = Date.parse(bankValidity[item.id]);
     if (!Number.isFinite(expires)) return 'Дату актуальності не вказано';
     const date = validityDateFormat.format(expires);
-    return expires < today ? `Термін минув · ${date}` : `Актуальний до ${date}`;
+    return `Матеріали актуальні до ${date}${expires < today ? ' (термін минув)' : ''}`;
   }
 
   function renderHome() {
