@@ -352,14 +352,11 @@
     day: 'numeric', month: 'long',
     timeZone: 'UTC',
   });
-  const kyivCalendar = new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/Kyiv',
-  });
   function bankValidityLabel(item) {
     const expires = Date.parse(bankValidity[item.id]);
     if (!Number.isFinite(expires)) return 'Дату актуальності не вказано';
     const date = validityDateFormat.format(expires);
-    return `Актуальний на ${date}`;
+    return `<strong style="color:#b42318">Актуальний</strong> на ${escapeHtml(date)}`;
   }
 
   function renderHome() {
@@ -367,15 +364,8 @@
     const local = bs();
     const stats = summaryStats();
     const answered = Object.values(local.statistics.attempts || {}).filter(item => item.attempts > 0).length;
-    const dateParts = Object.fromEntries(kyivCalendar.formatToParts(new Date()).map(({ type, value }) => [type, value]));
-    const today = Date.UTC(Number(dateParts.year), Number(dateParts.month) - 1, Number(dateParts.day));
-    const validityColor = item => {
-      const deadline = Date.parse(bankValidity[item.id]);
-      if (!Number.isFinite(deadline)) return 'inherit';
-      return deadline < today ? '#b42318' : '#087758';
-    };
-    const bankPickerText = item => `<span>${escapeHtml(item.vendor)} → ${escapeHtml(item.product)} → ${escapeHtml(item.title)} (${item.questionCount})</span>
-      <span style="color:${validityColor(item)};font-size:.8rem;font-weight:600;white-space:nowrap">${escapeHtml(bankValidityLabel(item))}</span>`;
+    const bankPickerText = item => `<span style="color:#111">${escapeHtml(item.vendor)} → ${escapeHtml(item.product)} → ${escapeHtml(item.title)} (${item.questionCount})</span>
+      <span style="color:#111;font-size:.8rem;white-space:nowrap">${bankValidityLabel(item)}</span>`;
     const totalAcrossBanks = banks.reduce((sum, item) => sum + item.questionCount, 0);
 
     $app.innerHTML = shell(`<main class="page">
