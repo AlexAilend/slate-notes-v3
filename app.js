@@ -374,6 +374,8 @@
       if (!Number.isFinite(deadline)) return 'inherit';
       return deadline < today ? '#b42318' : '#087758';
     };
+    const bankPickerText = item => `<span>${escapeHtml(item.vendor)} → ${escapeHtml(item.product)} → ${escapeHtml(item.title)} (${item.questionCount})</span>
+      <span style="color:${validityColor(item)};font-size:.8rem;font-weight:600;white-space:nowrap">${escapeHtml(bankValidityLabel(item))}</span>`;
     const totalAcrossBanks = banks.reduce((sum, item) => sum + item.questionCount, 0);
 
     $app.innerHTML = shell(`<main class="page">
@@ -390,10 +392,16 @@
           </div>
         </div>
         <div class="selector-card hero-card">
-          <label>Вендор / продукт / екзамен</label>
-          <select class="select" id="bankSelect" style="color:${validityColor(current)}">
-            ${banks.map(item => `<option value="${escapeHtml(item.id)}" style="color:${validityColor(item)}" ${item.id === current.id ? 'selected' : ''}>${escapeHtml(item.vendor)} → ${escapeHtml(item.product)} → ${escapeHtml(item.title)} (${item.questionCount}) · ${escapeHtml(bankValidityLabel(item))}</option>`).join('')}
-          </select>
+          <div id="bankPickerLabel">Вендор / продукт / екзамен</div>
+          <details id="bankPicker" style="position:relative;margin-top:8px">
+            <summary class="select" aria-labelledby="bankPickerLabel bankPickerCurrent" style="list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px">
+              <span id="bankPickerCurrent" style="display:flex;align-items:center;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;flex:1">${bankPickerText(current)}</span>
+              <span aria-hidden="true">⌄</span>
+            </summary>
+            <div style="position:absolute;inset-inline:0;top:calc(100% + 4px);z-index:5;background:white;border:1px solid #d9e1ed;border-radius:12px;padding:4px;box-shadow:0 8px 20px #17233d22">
+              ${banks.map(item => `<button type="button" class="button" data-bank-id="${escapeHtml(item.id)}" aria-pressed="${item.id === current.id}" style="display:flex;width:100%;align-items:center;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;text-align:left;border:0;background:${item.id === current.id ? '#edf2f8' : 'transparent'}">${bankPickerText(item)}</button>`).join('')}
+            </div>
+          </details>
           <div class="selector-meta"><b>${banks.length} банки · ${totalAcrossBanks} питань разом.</b><br>FortiOS: старий екзамен. FortiSIEM: новий екзамен. Обирай банк тут — Study, Exam і статистика працюють окремо для кожного.</div>
         </div>
       </section>
@@ -415,12 +423,25 @@
       </section>
     </main>`);
 
-    document.getElementById('bankSelect').onchange = event => {
-      state.activeBankId = event.target.value;
-      state.view = 'home';
-      save();
-      render();
+    const bankPicker = document.getElementById('bankPicker');
+    const pickerSummary = bankPicker.querySelector('summary');
+    bankPicker.onkeydown = event => {
+      if (event.key !== 'Escape' || !bankPicker.open) return;
+      bankPicker.open = false;
+      pickerSummary.focus();
     };
+    bankPicker.onfocusout = event => {
+      if (!bankPicker.contains(event.relatedTarget)) bankPicker.open = false;
+    };
+    bankPicker.querySelectorAll('[data-bank-id]').forEach(button => {
+      button.onclick = () => {
+        state.activeBankId = button.dataset.bankId;
+        state.view = 'home';
+        save();
+        render();
+        document.querySelector('#bankPicker summary').focus();
+      };
+    });
     document.querySelectorAll('[data-view]').forEach(button => {
       button.onclick = () => {
         state.view = button.dataset.view;
