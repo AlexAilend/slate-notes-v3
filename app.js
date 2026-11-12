@@ -349,17 +349,17 @@
     'fortisiem-practice-76': '2026-11-21',
   };
   const validityDateFormat = new Intl.DateTimeFormat('uk-UA', {
-    dateStyle: 'long',
+    day: 'numeric', month: 'long',
     timeZone: 'UTC',
   });
   const kyivCalendar = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric', month: '2-digit', day: '2-digit', timeZone: 'Europe/Kyiv',
   });
-  function bankValidityLabel(item, today) {
+  function bankValidityLabel(item) {
     const expires = Date.parse(bankValidity[item.id]);
     if (!Number.isFinite(expires)) return 'Дату актуальності не вказано';
     const date = validityDateFormat.format(expires);
-    return `Матеріали актуальні до ${date}${expires < today ? ' (термін минув)' : ''}`;
+    return `Актуальний на ${date}`;
   }
 
   function renderHome() {
@@ -369,6 +369,11 @@
     const answered = Object.values(local.statistics.attempts || {}).filter(item => item.attempts > 0).length;
     const dateParts = Object.fromEntries(kyivCalendar.formatToParts(new Date()).map(({ type, value }) => [type, value]));
     const today = Date.UTC(Number(dateParts.year), Number(dateParts.month) - 1, Number(dateParts.day));
+    const validityColor = item => {
+      const deadline = Date.parse(bankValidity[item.id]);
+      if (!Number.isFinite(deadline)) return 'inherit';
+      return deadline < today ? '#b42318' : '#087758';
+    };
     const totalAcrossBanks = banks.reduce((sum, item) => sum + item.questionCount, 0);
 
     $app.innerHTML = shell(`<main class="page">
@@ -386,8 +391,8 @@
         </div>
         <div class="selector-card hero-card">
           <label>Вендор / продукт / екзамен</label>
-          <select class="select" id="bankSelect">
-            ${banks.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === current.id ? 'selected' : ''}>${escapeHtml(item.vendor)} → ${escapeHtml(item.product)} → ${escapeHtml(item.title)} (${item.questionCount}) · ${escapeHtml(bankValidityLabel(item, today))}</option>`).join('')}
+          <select class="select" id="bankSelect" style="color:${validityColor(current)}">
+            ${banks.map(item => `<option value="${escapeHtml(item.id)}" style="color:${validityColor(item)}" ${item.id === current.id ? 'selected' : ''}>${escapeHtml(item.vendor)} → ${escapeHtml(item.product)} → ${escapeHtml(item.title)} (${item.questionCount}) · ${escapeHtml(bankValidityLabel(item))}</option>`).join('')}
           </select>
           <div class="selector-meta"><b>${banks.length} банки · ${totalAcrossBanks} питань разом.</b><br>FortiOS: старий екзамен. FortiSIEM: новий екзамен. Обирай банк тут — Study, Exam і статистика працюють окремо для кожного.</div>
         </div>
