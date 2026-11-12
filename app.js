@@ -880,11 +880,25 @@
       const rows=await allRows('exam_attempts',q=>q.order('id'));
       if(state.view!=='admin')return;
       cloudPage('Admin',`<p>Total users: ${profiles.length} · Active users: ${profiles.filter(p=>p.active).length}</p>`+metricCards(rows)+profiles.map(p=>{
-        const m=metrics(rows.filter(r=>r.user_id===p.id));return `<button class="button history-row" data-user="${p.id}">${escapeHtml(p.display_name||p.email)} · Tests ${m.tests} · Questions ${m.total} · Accuracy ${m.accuracy}% · Average ${m.average}% · Best ${m.best}% · Last ${escapeHtml(m.last)}</button>`;
+        const m=metrics(rows.filter(r=>r.user_id===p.id));return `<button class="button history-row" data-user="${p.id}">${escapeHtml(p.email)} · ${p.active ? 'Активний' : 'Заблокований'} · Tests ${m.tests} · Questions ${m.total} · Accuracy ${m.accuracy}% · Average ${m.average}% · Best ${m.best}% · Last ${escapeHtml(m.last)}</button>`;
       }).join(''));
       document.querySelectorAll('[data-user]').forEach(b=>b.onclick=()=>{
         const p=profiles.find(p=>p.id===b.dataset.user);
-        cloudPage('User details',`<h2>${escapeHtml(p.display_name||p.email)}</h2><p>Email: ${escapeHtml(p.email)}</p><p>Role: ${escapeHtml(p.role)} · Active: ${p.active}</p><p>Created: ${escapeHtml(p.created_at)}</p><p>Last activity: ${escapeHtml(p.last_seen_at||'—')}</p>${metricCards(rows.filter(r=>r.user_id===p.id))}<button class="button" id="userHistory">Exam history</button>`);
+        cloudPage('User details',`<h2>${escapeHtml(p.display_name||p.email)}</h2><p>Email: ${escapeHtml(p.email)}</p><p>Role: ${escapeHtml(p.role)} · Active: ${p.active}</p><p>Created: ${escapeHtml(p.created_at)}</p><p>Last activity: ${escapeHtml(p.last_seen_at||'—')}</p>${metricCards(rows.filter(r=>r.user_id===p.id))}<div class="actions"><button class="button" id="adminBack">До списку</button><button class="button" id="userHistory">Exam history</button>${p.role === 'user' ? `<button class="button" id="accountStatus">${p.active ? 'Заблокувати' : 'Розблокувати'}</button>` : ''}</div><p id="accountStatusMessage" role="status"></p>`);
+        document.getElementById('adminBack').onclick=renderAdmin;
+        const statusButton=document.getElementById('accountStatus');
+        if(statusButton) statusButton.onclick=async()=>{
+          statusButton.disabled=true;
+          const message=document.getElementById('accountStatusMessage');
+          const {error}=await db.rpc('admin_set_account_active',{p_user_id:p.id,p_active:!p.active});
+          if(!statusButton.isConnected)return;
+          if(error){
+            message.textContent=error.message;
+            statusButton.disabled=false;
+            return;
+          }
+          renderAdmin();
+        };
         document.getElementById('userHistory').onclick=()=>renderHistory(p.id);
       });
     }catch(e){cloudPage('Admin',escapeHtml(e.message));}
